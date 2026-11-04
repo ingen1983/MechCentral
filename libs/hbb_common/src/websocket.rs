@@ -128,6 +128,37 @@ impl WsFramedStream {
         let is_tls_type_cached = tls_type.is_some();
         let tls_type = tls_type.unwrap_or(TlsType::Rustls);
         let danger_accept_invalid_cert = get_cached_tls_accept_invalid_cert(&url);
+
+        // BRANDING: свой сервер адресуется по IP, а check_ws для IP всегда
+        // выбирает "ws" без шифрования. Между тем сигнальный и relay-порты
+        // могут работать под TLS (флаги -tls-signal / -tls-relay), и тогда
+        // сервер отвечает на незашифрованный запрос
+        //   "Client sent an HTTP request to an HTTPS server"
+        // — соединения не будет вовсе.
+        // Поэтому сначала пробуем "wss". Если TLS на сервере не настроен,
+        // ниже идёт обычная попытка по исходному "ws" — поведение сохраняется.
+        if url.starts_with("ws://") {
+            let tls_url = url.replacen("ws://", "wss://", 1);
+            let tls_result = Self::try_connect(
+                &tls_url,
+                local_addr,
+                proxy_conf,
+                ms_timeout,
+                tls_type,
+                is_tls_type_cached,
+                danger_accept_invalid_cert,
+                danger_accept_invalid_cert,
+            )
+            .await;
+            if tls_result.is_ok() {
+                return tls_result;
+            }
+            log::trace!(
+                "WebSocket over TLS not available for {}, using plain connection",
+                tls_url
+            );
+        }
+
         Self::try_connect(
             url,
             local_addr,
