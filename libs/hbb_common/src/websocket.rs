@@ -137,6 +137,11 @@ impl WsFramedStream {
         // — соединения не будет вовсе.
         // Поэтому сначала пробуем "wss". Если TLS на сервере не настроен,
         // ниже идёт обычная попытка по исходному "ws" — поведение сохраняется.
+        //
+        // tls_type здесь задан явно: для "ws://" get_cached_tls_type возвращает
+        // Plain, и с ним попытка wss осталась бы незашифрованной.
+        // danger_accept_invalid_cert = None задействует существующий откат
+        // try_connect на приём самоподписанного сертификата.
         if url.starts_with("ws://") {
             let tls_url = url.replacen("ws://", "wss://", 1);
             let tls_result = Self::try_connect(
@@ -144,10 +149,10 @@ impl WsFramedStream {
                 local_addr,
                 proxy_conf,
                 ms_timeout,
-                tls_type,
-                is_tls_type_cached,
-                danger_accept_invalid_cert,
-                danger_accept_invalid_cert,
+                TlsType::Rustls,
+                false,
+                None,
+                None,
             )
             .await;
             if tls_result.is_ok() {
