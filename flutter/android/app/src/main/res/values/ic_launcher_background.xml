@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Фон адаптивной иконки: система обрезает его маской, поэтому
+         это ровный цвет неба, а не картинка. Сам пейзаж лежит в
+         ic_launcher_foreground.png и ужат в безопасную зону. -->
+    <color name="ic_launcher_background">#4DA3E0</color>
+</resources>
